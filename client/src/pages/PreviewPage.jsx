@@ -1,7 +1,7 @@
 import React from "react";
 
-const Previewpage = () => {
+const PreviewPage = () => {
   return <div>PreviewPage</div>;
 };
 
-export default Previewpage;
+export default PreviewPage;

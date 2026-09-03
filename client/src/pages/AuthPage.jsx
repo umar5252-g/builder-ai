@@ -7,7 +7,7 @@ import { useAppContext } from "../context/AppContext";
 function AuthPage({ mode }) {
   const [login, register] = useAppContext();
 
-  const nevigate = useNavigate();
+  const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
@@ -64,7 +64,7 @@ function AuthPage({ mode }) {
               {error}
             </div>
           )}
-          <form className="space.y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {!isLogin && (
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-widest mb-2">

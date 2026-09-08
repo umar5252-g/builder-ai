@@ -5,7 +5,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 
 function AuthPage({ mode }) {
-  const [login, register] = useAppContext();
+  const { login, register } = useAppContext();
 
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -23,12 +23,12 @@ function AuthPage({ mode }) {
     setLoading(true);
 
     try {
-      if (mode == "login") {
+      if (mode === "login") {
         await login(email, password);
       } else {
         await register(name, email, password);
       }
-      Navigate("/");
+      navigate("/");
     } catch (err) {
       setError(
         err?.message ||
@@ -106,6 +106,7 @@ function AuthPage({ mode }) {
                 />
                 <button
                   type="button"
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-600 flex items-center justify-center cursor-pointer transition-colors   "
                 >
                   {showPassword ? (
@@ -120,7 +121,6 @@ function AuthPage({ mode }) {
               type="submit"
               disabled={loading}
               className="w-full py-2.5 bg-linear-to-br from-red-600 to-amber-600 text-white font-semibold hover:scale-102 disabled:opacity-40 flex items-center justify-center cursor-pointer mt-2 rounded-lg"
-              onClick={() => setShowPassword(!showPassword)}
             >
               {loading && (
                 <Loader2Icon className="animate-spin h-3.5 w-3.5 mr-2" />

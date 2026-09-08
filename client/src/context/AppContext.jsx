@@ -4,10 +4,12 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import { api } from "../api/api";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import debounce from "lodash.debounce";
 
 const AppContext = createContext(undefined);
 
@@ -24,7 +26,7 @@ export function AppContextProvider({ children }) {
   const [activeProject, setActiveProject] = useState(null);
   const [loadingActiveProject, setLoadingActiveProject] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
-  const [generatinProject, setGeneratingProject] = useState(false);
+  const [generatingProject, setGeneratingProject] = useState(false);
   const [activeFile, setActiveFile] = useState("/App.js");
   const [showCode, setShowCode] = useState(false);
 
@@ -41,7 +43,7 @@ export function AppContextProvider({ children }) {
   };
   useEffect(() => {
     createSession();
-  }, [createSession]);
+  }, []);
 
   const login = async (email, password) => {
     try {
@@ -88,27 +90,27 @@ export function AppContextProvider({ children }) {
     }
   };
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     if (!user) return;
     try {
-      const { data } = await api.get("/api/auth/projects");
-      setProjects(data);
+      const { data } = await api.get("/api/projects");
+      setProjects(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("failed to list projects", err);
       toast.error("failed to load projects list");
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, [user]);
 
-  const loadProject = async (id, silent = false) => {
+  const loadProject = useCallback(async (id, silent = false) => {
     if (!user) return;
     if (!silent) setLoadingActiveProject(true);
     try {
-      const { data } = await api.get(`api/projects/${id}`);
+      const { data } = await api.get(`/api/projects/${id}`);
       setActiveProject(data);
       // default file selection
-      const files = object.keys(data.files);
+      const files = Object.keys(data.files || {});
       if (files.length > 0) {
         setActiveFile((prev) => {
           if (files.includes(prev)) return prev;
@@ -121,27 +123,24 @@ export function AppContextProvider({ children }) {
     } finally {
       if (!silent) setLoadingActiveProject(false);
     }
+  }, [user]);
 
-    //automatically poll active project status if pending or loading
-    useEffect(() => {
-      if (!activeProject?._id || !user) return;
-      const isOngoing =
-        activeProject.status === "generating" ||
-        activeProject.status === "pending" ||
-        activeProject.status === "revising";
+  // Automatically poll active project status while it is being generated.
+  useEffect(() => {
+    if (!activeProject?._id || !user) return;
+    const isOngoing = ["generating", "pending", "revising"].includes(
+      activeProject.status,
+    );
 
-      if (isOngoing) {
-        setChatLoading(true);
-        const intervel = setInterval(
-          () => loadProject(activeProject?._id, true),
-          2000,
-        );
-        return () => clearInterval(intervel);
-      } else {
-        setChatLoading(true);
-      }
-    }, [activeProject?.id, activeProject?.status, loadProject, user]);
-  };
+    setChatLoading(isOngoing);
+    if (!isOngoing) return;
+
+    const interval = setInterval(
+      () => loadProject(activeProject._id, true),
+      2000,
+    );
+    return () => clearInterval(interval);
+  }, [activeProject?._id, activeProject?.status, loadProject, user]);
 
   const handleGenerate = useCallback(
     async (prompt) => {
@@ -150,8 +149,12 @@ export function AppContextProvider({ children }) {
       }
       setGeneratingProject(true);
       try {
-        const { data } = await api.post("api/projects", { prompt });
+        const { data } = await api.post("/api/projects", { prompt });
         toast.success("AI agent is planning the structure...");
+        if (data?._id) {
+          setProjects((prev) => [data, ...prev]);
+          navigate(`/builder/${data._id}`);
+        }
       } catch (err) {
         console.error("failed to generate project", err);
         toast.error(err?.response?.data?.error || "failed to generate project");
@@ -162,12 +165,12 @@ export function AppContextProvider({ children }) {
     [navigate, user],
   );
   const handleDelete = useCallback(
-    async (prompt) => {
+    async (id) => {
       if (!user) {
         return;
       }
       try {
-        await api.delete(`api/projects/${id}`, { prompt });
+        await api.delete(`/api/projects/${id}`);
         setProjects((prev) => prev.filter((p) => p._id !== id));
         toast.success("Project deleted successfully");
       } catch (err) {
@@ -176,6 +179,59 @@ export function AppContextProvider({ children }) {
       }
     },
     [user],
+  );
+
+  const handleChat = useCallback(
+    async (prompt) => {
+      if (!activeProject || !user) return;
+      setChatLoading(true);
+
+      try {
+        const { data } = await api.post(
+          `/api/projects/${activeProject._id}/chat`,
+          { prompt },
+        );
+        setActiveProject(data);
+        if (data.errors && data.errors.length > 0) {
+          toast.success(`${data.errors.length} revision patch(es) failed`);
+        } else {
+          toast.success(`Updated to version ${data.version}`);
+        }
+      } catch (error) {
+        console.error("Revision request failed", error);
+        toast.error(error?.response?.data?.error || "Revision request failed");
+      } finally {
+        setChatLoading(false);
+      }
+    },
+    [activeProject, user],
+  );
+
+  const debouncedSave = useMemo(
+    () =>
+      debounce(async (files, id) => {
+        try {
+          await api.put(`/api/projects/${id}/files`, { files });
+        } catch (err) {
+          console.log("failed to auto-save files: ", err);
+          toast.error("Failed to save code modifications");
+        }
+      }, 1000),
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.flush();
+    };
+  }, [debouncedSave]);
+
+  const updateProjectFiles = useCallback(
+    async (files) => {
+      if (!activeProject || !user) return;
+      debouncedSave(files, activeProject._id);
+    },
+    [activeProject, user, debouncedSave],
   );
 
   return (
@@ -192,12 +248,17 @@ export function AppContextProvider({ children }) {
           activeProject,
           loadingActiveProject,
           chatLoading,
-          generatinProject,
+          generatingProject,
           activeFile,
+          showCode,
+          setActiveFile,
           setShowCode,
           loadProjects,
+          loadProject,
           handleGenerate,
           handleDelete,
+          handleChat,
+          updateProjectFiles,
         }}
       >
         {children}

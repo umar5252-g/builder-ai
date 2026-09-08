@@ -16,7 +16,7 @@ function HomePage() {
     handleGenerate,
     handleDelete,
     logout,
-  } = useAppContext;
+  } = useAppContext();
   const navigate = useNavigate();
   useEffect(() => {
     loadProjects();
@@ -35,7 +35,7 @@ function HomePage() {
           <span>{user?.name}</span>
           <button
             className="py-1.5 px-3 border border-white/20 text-white hover:bg-white/10 text-xs rounded-md cursor-pointer bg-transparent "
-            onClick={handleDelete}
+            onClick={logout}
           >
             Sign out
           </button>
@@ -77,7 +77,7 @@ function HomePage() {
               {homeTags.map((tag, i) => (
                 <button
                   key={i}
-                  onClick={handleGenerate(tag)}
+                  onClick={() => handleGenerate(tag)}
                   disabled={generatingProject}
                   className="px-4 py-1.5 border rounded-full text-sm text-white bg-white/10 border-white/25 hover:bg-white/20 transition cursor-pointer shrink-0 font-medium"
                 >
@@ -101,9 +101,10 @@ function HomePage() {
               <div className="space-y-2 max-h-[80vh] overflow-y-auto pr-1">
                 {projects.map((p) => (
                   <div
+                    key={p._id}
                     className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 flex items-center justify-between group hover:border-white/20 hover:bg-white/10 cursor-pointer backdrop-blur-md transition-all"
                     onClick={() => {
-                      navigate(`/builder/${id}`);
+                      navigate(`/builder/${p._id}`);
                     }}
                   >
                     <div className="flex-1 min-w-0">

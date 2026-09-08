@@ -23,7 +23,7 @@ const PromptInput = ({
     }
   }, [autoFocus]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (e) => {
     if (e) e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed || loading) return;
@@ -32,7 +32,7 @@ const PromptInput = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
@@ -60,7 +60,7 @@ const PromptInput = ({
             htmlFor="file"
             className="border border-white/20 text-white/80 hover:text-white hover:border-white/30 p-1.5 rounded-md cursor-pointer flex items-center justify-center"
           >
-            <input type="file" id="" hidden />
+            <input type="file" id="file" hidden />
 
             <CloudUploadIcon />
           </label>
@@ -99,14 +99,14 @@ const PromptInput = ({
         placeholder={placeholder}
         disabled={loading}
         rows={3}
-        className="w-full p-4 pb-2 resize-none placeholder:text-white/60 outline-none bg-transparent text-white text-base"
+        className="w-full p-2 resize-none placeholder:text-zinc-400 outline-none bg-transparent text-zinc-900 text-sm leading-normal"
       />
       <button
         onClick={() => {
-          handleSubmit;
+          handleSubmit();
         }}
         disabled={!value.trim() || loading}
-        className="inline-flex items-center bg-zinc-950 text-white hover:bg-zinc-800 disabled:opacity-40 cursor-pointer rounded-full shrink-0"
+        className="inline-flex items-center justify-center bg-zinc-950 text-white hover:bg-zinc-800 disabled:opacity-40 cursor-pointer rounded-full shrink-0"
         style={{
           width: large ? 36 : 24,
           height: large ? 36 : 24,

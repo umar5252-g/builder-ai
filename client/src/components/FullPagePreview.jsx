@@ -1,0 +1,66 @@
+import React, { useMemo, useState } from "react";
+import { detectDependencies } from "../utils/sandpackUtils";
+import SandpackErrorMonitor from "./SandpackErrorMonitor";
+import {
+  SandpackPreview,
+  SandpackProvider,
+  SandpackLayout,
+} from "@codesandbox/sandpack-react";
+
+const FullPagePreview = ({ files }) => {
+  const [showErrorOverlay, setShowErrorOverlay] = useState(true);
+
+  const sandpackFiles = useMemo(() => {
+    if (!files) return {};
+
+    return Object.fromEntries(
+      Object.entries(files).map(([path, content]) => [
+        path,
+        {
+          code:
+            typeof content === "string"
+              ? content
+              : (content?.code ?? content?.content ?? ""),
+        },
+      ]),
+    );
+  }, [files]);
+
+  // detect dependencies from import statements in the generated file map
+  const dependencies = useMemo(() => {
+    return detectDependencies(sandpackFiles);
+  }, [sandpackFiles]);
+  return (
+    <div className="h-screen w-screen bg-white overflow-hidden">
+      <SandpackProvider
+        template="react"
+        files={sandpackFiles}
+        customSetup={{
+          dependencies,
+        }}
+        options={{
+          externalResources: [
+            "https://cdn.tailwindcss.com",
+            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
+          ],
+
+          logLevel: 0,
+        }}
+        className="h-full w-full"
+      >
+        <SandpackErrorMonitor onErrorChange={setShowErrorOverlay} />
+        <SandpackLayout className="h-full w-full border-none! bg-transparent! ">
+          <SandpackPreview
+            showNavigator={false}
+            showRefreshButton={false}
+            showOpenInCodeSandbox={false}
+            showSandpackErrorOverlay={showErrorOverlay}
+            className="h-full w-full"
+          />
+        </SandpackLayout>
+      </SandpackProvider>
+    </div>
+  );
+};
+
+export default FullPagePreview;

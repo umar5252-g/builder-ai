@@ -1,10 +1,10 @@
 import { FileTextIcon, FolderOpenIcon, FileCodeIcon } from "lucide-react";
-import React, { Children, useMemo } from "react";
+import React, { useMemo } from "react";
 
 function buildTree(paths) {
   const root = [];
 
-  for (const filePath of paths.sort()) {
+  for (const filePath of [...paths].sort()) {
     const parts = filePath.split("/").filter(Boolean);
     let current = root;
 
@@ -44,7 +44,8 @@ function getFileIcon(name) {
 }
 
 function TreeItem({ node, activeFile, onFileSelect, depth = 0 }) {
-  const isActive = node.path === activeFile;
+  const normalize = (p) => (p ? (p.startsWith("/") ? p : `/${p}`) : "");
+  const isActive = normalize(node.path) === normalize(activeFile);
 
   if (node.isDir) {
     return (
@@ -75,7 +76,7 @@ function TreeItem({ node, activeFile, onFileSelect, depth = 0 }) {
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
     >
       {getFileIcon(node.name)}
-      <span className="truncate"> {node.name}</span>
+      <span className="truncate">{node.name}</span>
     </button>
   );
 }

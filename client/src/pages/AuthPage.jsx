@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import LoginLeft from "../components/LoginLeft";
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 
 function AuthPage({ mode }) {

@@ -1,45 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../api/api";
 import Loading from "../components/Loading";
-import PreviewPanel from "../components/PreviewPanel";
+import FullPagePreview from "../components/FullPagePreview";
+import { useAppContext } from "../context/AppContext";
 
 const PreviewPage = () => {
   const { id } = useParams();
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    activeProject: project,
+    loadingActiveProject: loading,
+    loadProject,
+  } = useAppContext();
 
   useEffect(() => {
-    if (!id) return;
-    const fetchProject = async () => {
-      try {
-        const { data } = await api.get(`/api/projects/${id}`);
-        setProject(data);
-      } catch (err) {
-        console.error("Failed to load preview project", err);
-        setError("Failed to load project preview");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProject();
-  }, [id]);
+    if (id) {
+      loadProject(id);
+    }
+  }, [id, loadProject]);
 
-  if (loading) return <Loading />;
-  if (error || !project) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-zinc-50 text-zinc-600">
-        <p>{error || "Project not found"}</p>
-      </div>
-    );
+  if (loading || !project) {
+    return <Loading />;
   }
 
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-white">
-      <PreviewPanel project={project} activeFile="/App.js" showCode={false} />
-    </div>
-  );
+  return <FullPagePreview files={project.files} />;
 };
 
 export default PreviewPage;

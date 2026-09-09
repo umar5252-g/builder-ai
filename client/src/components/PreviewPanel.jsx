@@ -11,19 +11,33 @@ import { useAppContext } from "../context/AppContext";
 import SandpackErrorMonitor from "./SandpackErrorMonitor";
 
 // watches for file edits inside Sandpack editor and saves changes to DB & live state
-function SandpackFileWatcher({ onLiveFilesChange }) {
+function SandpackFileWatcher({ activeFile }) {
   const { sandpack } = useSandpack();
-  const { files } = sandpack;
+  const { files, openFile } = sandpack;
   const { activeProject, updateProjectFiles } = useAppContext();
   const activeProjectRef = useRef(activeProject);
+  const updateProjectFilesRef = useRef(updateProjectFiles);
+  const lastActiveFileRef = useRef(activeFile);
 
   useEffect(() => {
     activeProjectRef.current = activeProject;
-  }, [activeProject]);
+    updateProjectFilesRef.current = updateProjectFiles;
+  });
+
+  // Switch file in Sandpack when selected externally (e.g. from FileExplorer)
+  useEffect(() => {
+    if (activeFile && lastActiveFileRef.current !== activeFile) {
+      lastActiveFileRef.current = activeFile;
+      const normalized = activeFile.startsWith("/") ? activeFile : `/${activeFile}`;
+      if (files[normalized]) {
+        openFile(normalized);
+      }
+    }
+  }, [activeFile, files, openFile]);
 
   useEffect(() => {
     const project = activeProjectRef.current;
-    if (!project) return;
+    if (!project || !project.files) return;
     const updatedFiles = {};
     let hasChanges = false;
 
@@ -40,10 +54,8 @@ function SandpackFileWatcher({ onLiveFilesChange }) {
       }
     }
 
-    // Sync live files to parent
-    onLiveFilesChange(updatedFiles);
     if (hasChanges) {
-      updateProjectFiles(updatedFiles);
+      updateProjectFilesRef.current?.(updatedFiles);
     }
   }, [files]);
   return null;
@@ -51,48 +63,27 @@ function SandpackFileWatcher({ onLiveFilesChange }) {
 
 const PreviewPanel = ({ project, activeFile, showCode }) => {
   const [showErrorOverlay, setShowErrorOverlay] = useState(true);
-  // keep local state of files that updatwes as user types
-  const [liveFiles, setLiveFiles] = useState(project.files);
-  const [prevProjectKey, setPrevProjectKey] = useState(
-    `${project._id}-${project.version}`,
-  );
-  const currentKey = `${project._id}-${project.version}`;
-  if (prevProjectKey !== currentKey) {
-    setPrevProjectKey(currentKey);
-    setLiveFiles(project.files);
-  }
 
-  const handleLiveFilesChange = (newFiles) => {
-    setLiveFiles((prev) => {
-      let changed = false;
-      for (const [p, code] of Object.entries(newFiles)) {
-        if (prev[p] !== code) {
-          changed = true;
-          break;
-        }
-      }
-      return changed ? newFiles : prev;
-    });
-  };
-
-  // convert liveFiles to Sandpack format
+  // convert project.files to Sandpack format
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sandpackFiles = useMemo(() => {
     const spFiles = {};
-    for (const [path, content] of Object.entries(liveFiles)) {
+    for (const [path, content] of Object.entries(project.files || {})) {
       const fileCode =
         typeof content === "string" ? content : content?.content || "";
-      spFiles[path] = {
+      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+      spFiles[normalizedPath] = {
         code: fileCode,
-        active: path === activeFile,
       };
     }
     return spFiles;
-  }, [liveFiles, activeFile]);
+  }, [project._id, project.version]);
 
-  // detect dependencies from import statement using liveFiles
+  // detect dependencies from import statement using project files
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const dependencies = useMemo(() => {
-    return detectDependencies(liveFiles);
-  }, [liveFiles]);
+    return detectDependencies(project.files || {});
+  }, [project._id, project.version]);
 
   return (
     <div className="h-full w-full">
@@ -104,6 +95,7 @@ const PreviewPanel = ({ project, activeFile, showCode }) => {
           dependencies,
         }}
         options={{
+          activeFile,
           externalResources: [
             "https://cdn.tailwindcss.com",
             "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
@@ -136,7 +128,7 @@ const PreviewPanel = ({ project, activeFile, showCode }) => {
           },
         }}
       >
-        <SandpackFileWatcher onLiveFilesChange={handleLiveFilesChange} />
+        <SandpackFileWatcher activeFile={activeFile} />
         <SandpackErrorMonitor onErrorChange={setShowErrorOverlay} />
         <SandpackLayout
           style={{

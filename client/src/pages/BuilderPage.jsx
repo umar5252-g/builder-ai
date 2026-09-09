@@ -36,20 +36,20 @@ const BuilderPage = () => {
   useEffect(() => {
     if (!id) return;
     loadProject(id);
-  }, [id]);
+  }, [id, loadProject]);
 
-  useEffect(() => {
-    if (!id || !activeProject) return;
-    if (
-      activeProject.status === "generating" ||
-      activeProject.status === "pending"
-    ) {
-      const interval = setInterval(() => {
-        loadProject(id, true);
-      }, 1500);
-      return () => clearInterval(interval);
-    }
-  }, [id, loadProject, activeProject]);
+  // useEffect(() => {
+  //   if (!id || !activeProject) return;
+  //   if (
+  //     activeProject.status === "generating" ||
+  //     activeProject.status === "pending"
+  //   ) {
+  //     const interval = setInterval(() => {
+  //       loadProject(id, true);
+  //     }, 1500);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [id, loadProject, activeProject]);
 
   const handleOpenPreview = () => {
     if (!id) return;
@@ -63,7 +63,7 @@ const BuilderPage = () => {
     try {
       await api.post(`/api/projects/${id}/publish`);
       toast.success("Project published successfully!");
-      setPublishUrl(`${window.location.origin}/preview/${id}`);
+      setPublishUrl(`${window.location.origin}/publish/${id}`);
     } catch (err) {
       console.error("Publish failed:", err);
       toast.error("Failed to publish project");

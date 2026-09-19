@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
 
 const UserSchema = new Schema(
@@ -14,22 +14,22 @@ const UserSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-
     password: {
       required: true,
       type: String,
     },
   },
-  { timestamps },
+  { timestamps: true },
 );
 
-// hash the password
-UserSchema.pre("save", async () => {
+// Hash the password before saving
+UserSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
-  const salt = await bcrypt.hash(this.password, salt);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// compare password method
+// Compare password method
 UserSchema.methods.comparePassword = async function (password) {
   return bcrypt.compare(password, this.password);
 };
